@@ -140,7 +140,7 @@
       # Raspberry Pi specific module
       raspberryPiModule = {
         # target raspberry pi 4
-        # raspberry-pi-nix.board = "bcm2711";
+        raspberry-pi-nix.board = "bcm2711";
         # boot.loader.grub.enable = false;
         # boot.loader.generic-extlinux-compatible.enable = nixpkgs.lib.mkForce true;
 
