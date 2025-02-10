@@ -3,6 +3,7 @@ import time
 import logging
 from datetime import datetime, UTC
 from typing import Optional
+import os
 
 from python_mpv_jsonipc import MPV, MPVError
 from peewee import *
@@ -59,7 +60,7 @@ class PlaybackPosition(Model):
 
 # ---- MPV Controller ----
 class MPVController:
-    def __init__(self, socket_path: str = "/tmp/mpv-socket"):
+    def __init__(self, socket_path: str = f"{os.getenv('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')}/mpv.sock"):
         self.player = MPV(start_mpv=False, ipc_socket=socket_path)
         logger.info("Connected to MPV")
 

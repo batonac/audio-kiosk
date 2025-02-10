@@ -39,6 +39,11 @@
         {
           environment.etc."wifi-credentials".source = wifiEnvFile;
 
+          # Add global session variables
+          environment.sessionVariables = {
+            XDG_RUNTIME_DIR = "/run/user/1000";
+          };
+
           networking.wireless =
             let
               # Source credentials from the persistent file
@@ -83,14 +88,18 @@
             };
           };
 
+          services.openssh.enable = true;
+
           systemd.services = {
             mpv-daemon = {
               description = "MPV Daemon";
               wantedBy = [ "multi-user.target" ];
               serviceConfig = {
+                ExecStart = "${pkgs.lib.getExe pkgs.mpv} --no-video --idle --input-ipc-server=$XDG_RUNTIME_DIR/mpv.sock --daemonize";
+                RuntimeDirectory = "user/1000";
+                RuntimeDirectoryMode = "0755";
                 Type = "forking";
                 User = "nixos";
-                ExecStart = "${pkgs.mpv}/bin/mpv --no-video --idle --input-ipc-server=/tmp/mpv-socket --daemonize";
               };
             };
 
@@ -101,14 +110,14 @@
               overrideStrategy = "asDropin";
               serviceConfig = {
                 ExecStart = "${pkgs.lib.getExe pythonEnv} ${controller}";
-                Type = "idle";
-                User = "nixos";
-                WorkingDirectory = "/home/nixos";
                 StandardInput = "tty";
                 StandardOutput = "tty";
                 TTYPath = "/dev/tty1";
                 TTYReset = true;
                 TTYVHangup = true;
+                Type = "idle";
+                User = "nixos";
+                WorkingDirectory = "/home/nixos";
               };
             };
           };
@@ -119,7 +128,9 @@
               openssh.authorizedKeys.keys = [
                 "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOv4SpIhHJqtRaYBRQOin4PTDUxRwo7ozoQHTUFjMGLW avunu@AvunuCentral"
               ];
+              password = "nixos";
               shell = pkgs.bash;
+              uid = 1000;
             };
           };
         };

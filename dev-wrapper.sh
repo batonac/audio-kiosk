@@ -2,7 +2,7 @@
 set -e
 
 # Start MPV daemon with youtube-dl options in background
-nohup mpv --no-video --idle=yes --input-ipc-server=/tmp/mpv-socket --ytdl --ytdl-raw-options=mark-watched=,cookies-from-browser=firefox > mpv.log 2>&1 &
+nohup mpv --no-video --idle=yes --input-ipc-server="$XDG_RUNTIME_DIR/mpv.sock" --ytdl --ytdl-raw-options=mark-watched=,cookies-from-browser=firefox > mpv.log 2>&1 &
 MPV_PID=$!
 
 # Give MPV time to create the socket

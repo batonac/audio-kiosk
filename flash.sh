@@ -2,15 +2,35 @@
 
 set -e
 
-# Function to list removable devices
+# Function to list removable devices and store them in an array
 list_devices() {
-    local devices=()
+    declare -ga devices=()  # Make array global
+    local idx=1
+
+    # Clear existing array
+    devices=()
+
+    # Find SD card devices (mmcblk*)
+    while read -r dev; do
+        if [ -n "$dev" ]; then
+            size=$(lsblk -n -o SIZE "$dev" | head -1)
+            model=$(lsblk -n -o MODEL "$dev" | head -1)
+            if [ -z "$model" ]; then model="SD/MMC Card"; fi
+            echo "$idx) $(printf "%-15s" "$model") Size: $size (${dev##*/})"
+            devices+=("${dev##*/}")
+            ((idx++))
+        fi
+    done < <(find /dev -maxdepth 1 -name "mmcblk[0-9]" 2>/dev/null)
+
+    # Find USB/removable devices (sd*)
     while read -r line; do
         if [[ $line =~ removable ]]; then
             local dev=$(echo "$line" | cut -d' ' -f1)
             local size=$(lsblk -n -o SIZE "$dev" | head -1)
             local model=$(lsblk -n -o MODEL "$dev" | head -1)
-            echo "${dev##*/}) $(printf "%-15s" "$model") Size: $size"
+            echo "$idx) $(printf "%-15s" "$model") Size: $size (${dev##*/})"
+            devices+=("${dev##*/}")
+            ((idx++))
         fi
     done < <(lsblk -p -d -o NAME,RM,SIZE,MODEL | grep "1[[:space:]]")
 }
@@ -28,20 +48,28 @@ if [ ! -d "./result/sd-image" ]; then
     exit 1
 fi
 
-# List available devices
+# List available devices and get selection
 echo "Available devices:"
 echo
 list_devices
-echo
 
-# Get user selection
-read -p "Enter device name (e.g., sdb): " device
-
-# Validate device exists and is removable
-if ! lsblk -d -o NAME,RM | grep -q "^${device}.*1[[:space:]]*$"; then
-    echo "Error: Invalid or non-removable device selected"
+device_count=${#devices[@]}
+if [ $device_count -eq 0 ]; then
+    echo "No removable devices found!"
     exit 1
 fi
+
+echo
+echo "Select a device (1-$device_count):"
+read -r choice
+
+# Validate input
+if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$device_count" ]; then
+    echo "Error: Invalid selection"
+    exit 1
+fi
+
+device="${devices[$((choice-1))]}"
 
 # Show confirmation with warning
 echo
