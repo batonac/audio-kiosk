@@ -185,7 +185,7 @@
         };
       };
     in
-    flake-utils.lib.eachDefaultSystem (
+    (flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
@@ -212,17 +212,6 @@
           '';
         };
 
-        nixosConfigurations = {
-          raspberryPi = nixpkgs.lib.nixosSystem {
-            system = "aarch64-linux";
-            modules = [
-              baseModule
-              raspberryPiModule
-              raspberry-pi-nix.nixosModules.raspberry-pi
-            ];
-          };
-        };
-
         packages.${system} = {
           vm = nixos-generators.nixosGenerate {
             inherit system;
@@ -240,8 +229,18 @@
           };
         };
       }
-    )
-    // {
+    )) // {
+      nixosConfigurations = {
+        raspberryPi = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";
+          modules = [
+            baseModule
+            raspberryPiModule
+            raspberry-pi-nix.nixosModules.raspberry-pi
+          ];
+        };
+      };
+      
       packages.aarch64-linux = {
         sdImage = nixos-generators.nixosGenerate {
           system = "aarch64-linux";
