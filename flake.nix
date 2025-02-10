@@ -169,7 +169,7 @@
         system.autoUpgrade = {
           allowReboot = false;
           enable = true;
-          flake = "github:batonac/audio-kiosk#nixos";
+          flake = "github:batonac/audio-kiosk#raspberryPi";
           flags = [ "--impure" ];
         };
       };
