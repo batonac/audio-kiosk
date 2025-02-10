@@ -21,12 +21,6 @@
       baseModule =
         { pkgs, ... }:
         let
-          wifi_ssid = builtins.getEnv "WIFI_SSID";
-          wifi_key = builtins.getEnv "WIFI_KEY";
-          wifiEnvFile = pkgs.writeText "wifi-credentials" ''
-            WIFI_SSID="${wifi_ssid}"
-            WIFI_KEY="${wifi_key}"
-          '';
           RUNTIME_DIR = "/run/user/1000";
           pythonEnv = pkgs.python3.withPackages (
             ps: with ps; [
@@ -35,24 +29,20 @@
             ]
           );
           controller = pkgs.writeText "kiosk.py" (builtins.readFile ./kiosk.py);
-
         in
         {
-          environment.etc."wifi-credentials".source = wifiEnvFile;
-
-          # Add global session variables
           environment.sessionVariables = {
             XDG_RUNTIME_DIR = RUNTIME_DIR;
           };
 
           networking.wireless = {
             enable = true;
-            networks."${
-              if wifi_ssid != "" then wifi_ssid else "$(. /etc/wifi-credentials && echo $WIFI_SSID)"
-            }" =
-              {
-                psk = if wifi_key != "" then wifi_key else "$(. /etc/wifi-credentials && echo $WIFI_KEY)";
+            secretsFile = "/etc/wireless.conf";
+            networks = {
+              "ext:WIFI_SSID" = {
+                psk = "ext:WIFI_PSK";
               };
+            };
           };
 
           nix = {
@@ -134,6 +124,24 @@
               shell = pkgs.bash;
               uid = 1000;
             };
+          };
+        };
+
+      # New module for initial setup
+      initialSetupModule =
+        { pkgs, ... }:
+        let
+          wifi_ssid = builtins.getEnv "WIFI_SSID";
+          wifi_key = builtins.getEnv "WIFI_KEY";
+          wifiSecretsFile = pkgs.writeText "wireless.conf" ''
+            WIFI_SSID=${wifi_ssid}
+            WIFI_PSK=${wifi_key}
+          '';
+        in
+        {
+          environment.etc."wireless.conf" = {
+            source = wifiSecretsFile;
+            mode = "0600";
           };
         };
 
@@ -232,7 +240,8 @@
           };
         };
       }
-    )) // {
+    ))
+    // {
       nixosConfigurations = {
         raspberryPi = nixpkgs.lib.nixosSystem {
           system = "aarch64-linux";
@@ -243,7 +252,7 @@
           ];
         };
       };
-      
+
       packages.aarch64-linux = {
         sdImage = nixos-generators.nixosGenerate {
           system = "aarch64-linux";
@@ -251,6 +260,7 @@
           modules = [
             baseModule
             raspberryPiModule
+            initialSetupModule # Only include in the SD image
           ];
         };
       };
