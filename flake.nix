@@ -85,30 +85,30 @@
 
           systemd.services = {
             mpv-daemon = {
-              unitConfig = {
-                Description = "MPV Daemon";
-              };
+              description = "MPV Daemon";
               wantedBy = [ "multi-user.target" ];
               serviceConfig = {
                 Type = "forking";
-                ExecStart = "${pkgs.mpv}/bin/mpv --no-video --daemonize --input-ipc-server=/tmp/mpv-socket";
+                User = "nixos";
+                ExecStart = "${pkgs.mpv}/bin/mpv --no-video --idle --input-ipc-server=/tmp/mpv-socket --daemonize";
               };
             };
 
-            kiosk-controller = {
-              unitConfig = {
-                Description = "Audio Kiosk Controller";
-              };
-              wants = [ "mpv-daemon.service" ];
+            "getty@tty1" = {
+              enable = true;
               after = [ "mpv-daemon.service" ];
+              requires = [ "mpv-daemon.service" ];
+              overrideStrategy = "asDropin";
               serviceConfig = {
-                Environment = "HOME=/home/nixos";
                 ExecStart = "${pkgs.lib.getExe pythonEnv} ${controller}";
-                Restart = "always";
-                RestartSec = "5";
-                Type = "simple";
+                Type = "idle";
                 User = "nixos";
                 WorkingDirectory = "/home/nixos";
+                StandardInput = "tty";
+                StandardOutput = "tty";
+                TTYPath = "/dev/tty1";
+                TTYReset = true;
+                TTYVHangup = true;
               };
             };
           };
