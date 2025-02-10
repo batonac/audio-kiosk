@@ -28,7 +28,7 @@ case $choice in
         ;;
     3)
         echo "Building QEMU VM image..."
-        nix build .#packages.$(nix eval --impure --expr builtins.currentSystem --raw).qemu_vm --impure
+        nix build .#packages.$(nix eval --impure --expr builtins.currentSystem --raw).vm --impure
         echo "Run VM with: ./result/bin/run-*-vm"
         ;;
     *)

@@ -27,6 +27,7 @@
             WIFI_SSID="${wifi_ssid}"
             WIFI_KEY="${wifi_key}"
           '';
+          RUNTIME_DIR = "/run/user/1000";
           pythonEnv = pkgs.python3.withPackages (
             ps: with ps; [
               peewee
@@ -41,25 +42,18 @@
 
           # Add global session variables
           environment.sessionVariables = {
-            XDG_RUNTIME_DIR = "/run/user/1000";
+            XDG_RUNTIME_DIR = RUNTIME_DIR;
           };
 
-          networking.wireless =
-            let
-              # Source credentials from the persistent file
-              persistentWifiSsid = "$(. /etc/wifi-credentials && echo $WIFI_SSID)";
-              persistentWifiKey = "$(. /etc/wifi-credentials && echo $WIFI_KEY)";
-            in
-            if wifi_ssid != "" then
+          networking.wireless = {
+            enable = true;
+            networks."${
+              if wifi_ssid != "" then wifi_ssid else "$(. /etc/wifi-credentials && echo $WIFI_SSID)"
+            }" =
               {
-                enable = true;
-                userControlled.enable = true;
-                networks."${persistentWifiSsid}" = {
-                  psk = persistentWifiKey;
-                };
-              }
-            else
-              { };
+                psk = if wifi_key != "" then wifi_key else "$(. /etc/wifi-credentials && echo $WIFI_KEY)";
+              };
+          };
 
           nix = {
             gc = {
@@ -88,17 +82,24 @@
             };
           };
 
+          security.sudo = {
+            enable = true;
+            wheelNeedsPassword = false;
+          };
+
           services.openssh.enable = true;
+
+          system.stateVersion = "25.05";
 
           systemd.services = {
             mpv-daemon = {
               description = "MPV Daemon";
               wantedBy = [ "multi-user.target" ];
               serviceConfig = {
-                ExecStart = "${pkgs.lib.getExe pkgs.mpv} --no-video --idle --input-ipc-server=$XDG_RUNTIME_DIR/mpv.sock --daemonize";
+                ExecStart = "${pkgs.lib.getExe pkgs.mpv} --no-video --idle --input-ipc-server=${RUNTIME_DIR}/mpv.sock";
                 RuntimeDirectory = "user/1000";
                 RuntimeDirectoryMode = "0755";
-                Type = "forking";
+                Type = "idle";
                 User = "nixos";
               };
             };
@@ -124,6 +125,7 @@
 
           users = {
             users.nixos = {
+              extraGroups = [ "wheel" ];
               isNormalUser = true;
               openssh.authorizedKeys.keys = [
                 "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOv4SpIhHJqtRaYBRQOin4PTDUxRwo7ozoQHTUFjMGLW avunu@AvunuCentral"
@@ -142,14 +144,13 @@
         # boot.loader.grub.enable = false;
         # boot.loader.generic-extlinux-compatible.enable = nixpkgs.lib.mkForce true;
 
-        # fileSystems."/" = {
-        #   device = "/dev/disk/by-label/NIXOS_SD";
-        #   fsType = nixpkgs.lib.mkForce "ext4";
-        #   autoResize = true;
-        # };
-
         # use tmpfs to reduce SD card wear
         fileSystems = {
+          "/" = {
+            device = "/dev/disk/by-label/NIXOS_SD";
+            fsType = nixpkgs.lib.mkForce "ext4";
+            autoResize = true;
+          };
           "/tmp" = {
             device = "tmpfs";
             fsType = "tmpfs";
@@ -161,6 +162,9 @@
             options = [ "mode=0755" ];
           };
         };
+
+        # Disable things we don't need
+        hardware.bluetooth.enable = false;
 
         system.autoUpgrade = {
           allowReboot = false;
@@ -209,48 +213,27 @@
         };
 
         nixosConfigurations = {
-          raspberryPi = {
+          raspberryPi = nixpkgs.lib.nixosSystem {
             system = "aarch64-linux";
-            config = {
-              imports = [
-                baseModule
-                raspberryPiModule
-                raspberry-pi-nix.nixosModules.raspberry-pi
-              ];
-            };
-          };
-
-          # Add QEMU configuration
-          qemu = nixpkgs.lib.nixosSystem {
-            inherit system;
             modules = [
               baseModule
-              qemuModule
-              {
-                virtualisation = {
-                  cores = 4;
-                  memorySize = 2048;
-                  qemu.options = [ "-cpu max" ];
-                };
-              }
+              raspberryPiModule
+              raspberry-pi-nix.nixosModules.raspberry-pi
             ];
           };
         };
 
-        # Simplified packages section
-        packages = {
-          default = self.packages.${system}.qemu_vm;
-          qemu_vm = nixos-generators.nixosGenerate {
+        packages.${system} = {
+          vm = nixos-generators.nixosGenerate {
             inherit system;
             format = "vm";
             modules = [
               baseModule
-              qemuModule
               {
                 virtualisation = {
                   cores = 4;
                   memorySize = 2048;
-                  qemu.options = [ "-cpu max" ];
+                  diskSize = 8192; # 8GB disk
                 };
               }
             ];

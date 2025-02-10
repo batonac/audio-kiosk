@@ -61,7 +61,7 @@ fi
 
 echo
 echo "Select a device (1-$device_count):"
-read -r choice
+read -r -p "> " choice
 
 # Validate input
 if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$device_count" ]; then
@@ -77,7 +77,7 @@ echo "WARNING: This will ERASE ALL DATA on /dev/${device}"
 echo "Device details:"
 lsblk -o NAME,SIZE,MODEL "/dev/$device"
 echo
-read -p "Are you sure you want to continue? (y/N) " confirm
+read -r -p "Are you sure you want to continue? (y/N) " confirm
 
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo "Operation cancelled"
