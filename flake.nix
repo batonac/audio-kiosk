@@ -77,7 +77,10 @@
             wheelNeedsPassword = false;
           };
 
-          services.openssh.enable = true;
+          services = {
+            openssh.enable = true;
+            getty.autologinUser = "nixos";
+          };
 
           system.stateVersion = "25.05";
 
@@ -94,13 +97,19 @@
               };
             };
 
-            "getty@tty1" = {
+            kiosk-controller = {
+              after = [
+                "mpv-daemon.service"
+                "getty@tty1.service"
+                "network.target"
+              ];
               enable = true;
-              after = [ "mpv-daemon.service" ];
               requires = [ "mpv-daemon.service" ];
-              overrideStrategy = "asDropin";
+              wantedBy = [ "multi-user.target" ];
+              wants = [ "getty@tty1.service" ];
               serviceConfig = {
                 ExecStart = "${pkgs.lib.getExe pythonEnv} ${controller}";
+                Restart = "always";
                 StandardInput = "tty";
                 StandardOutput = "tty";
                 TTYPath = "/dev/tty1";
@@ -148,10 +157,10 @@
       # Raspberry Pi specific module
       raspberryPiModule = {
         # target raspberry pi 4
-        raspberry-pi-nix = {
-          board = "bcm2711";
-          libcamera-overlay.enable = false;
-        };
+        # raspberry-pi-nix = {
+        #   board = "bcm2711";
+        #   libcamera-overlay.enable = false;
+        # };
         # boot.loader.grub.enable = false;
         # boot.loader.generic-extlinux-compatible.enable = nixpkgs.lib.mkForce true;
 
@@ -248,7 +257,7 @@
           modules = [
             baseModule
             raspberryPiModule
-            raspberry-pi-nix.nixosModules.raspberry-pi
+            # raspberry-pi-nix.nixosModules.raspberry-pi
           ];
         };
       };
@@ -260,6 +269,7 @@
           modules = [
             baseModule
             raspberryPiModule
+            # raspberry-pi-nix.nixosModules.raspberry-pi
             initialSetupModule # Only include in the SD image
           ];
         };
