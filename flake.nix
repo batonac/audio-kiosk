@@ -161,8 +161,16 @@
         #   board = "bcm2711";
         #   libcamera-overlay.enable = false;
         # };
-        # boot.loader.grub.enable = false;
-        # boot.loader.generic-extlinux-compatible.enable = nixpkgs.lib.mkForce true;
+        boot = {
+          loader = {
+            grub.enable = false;
+            generic-extlinux-compatible.enable = nixpkgs.lib.mkForce true;
+          };
+          kernelParams = [
+            "snd_bcm2835.enable_hdmi=0"
+            "snd_bcm2835.enable_headphones=1"
+          ];
+        };
 
         # use tmpfs to reduce SD card wear
         fileSystems = {
