@@ -278,7 +278,7 @@
             baseModule
             raspberryPiModule
             # raspberry-pi-nix.nixosModules.raspberry-pi
-            initialSetupModule # Only include in the SD image
+            # initialSetupModule # Only include in the SD image
           ];
         };
       };
